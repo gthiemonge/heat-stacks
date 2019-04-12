@@ -1,0 +1,71 @@
+heat_template_version: 2016-10-14
+
+parameters:
+    name:
+        type: string
+
+    public_network:
+        type: string
+        default: public
+
+    ipv4_enable:
+        type: boolean
+        default: true
+    ipv6_enable:
+        type: boolean
+        default: false
+
+conditions:
+    ipv4_enabled: { get_param: ipv4_enable }
+    ipv6_enabled: { get_param: ipv6_enable }
+
+resources:
+    network:
+        type: OS::Neutron::Net
+        properties:
+            name: { get_param: name }
+
+    ipv4_subnet:
+        type: OS::Neutron::Subnet
+        properties:
+            name: { list_join: ['-', [ 'ipv4', { get_param: name }, 'subnet' ] ] }
+            subnetpool: shared-default-subnetpool-v4
+            network: { get_resource: network }
+        condition: ipv4_enabled
+
+    ipv6_subnet:
+        type: OS::Neutron::Subnet
+        properties:
+            name: { list_join: ['-', [ 'ipv6', { get_param: name }, 'subnet' ] ] }
+            ip_version: 6
+            subnetpool: shared-default-subnetpool-v6
+            network: { get_resource: network }
+            ipv6_address_mode: slaac
+            ipv6_ra_mode: slaac
+        condition: ipv6_enabled
+
+    router:
+        type: OS::Neutron::Router
+        properties:
+            name: { list_join: ['-', [ { get_param: name }, 'router' ] ] }
+            name: int-router
+            external_gateway_info:
+                network: { get_param: public_network }
+
+    router_ipv4_interface:
+        type: OS::Neutron::RouterInterface
+        properties:
+            router: { get_resource: router }
+            subnet: { get_resource: ipv4_subnet }
+        condition: ipv4_enabled
+
+    router_ipv6_interface:
+        type: OS::Neutron::RouterInterface
+        properties:
+            router: { get_resource: router }
+            subnet: { get_resource: ipv6_subnet }
+        condition: ipv6_enabled
+
+outputs:
+    OS::stack_id:
+        value: { get_resource: network }

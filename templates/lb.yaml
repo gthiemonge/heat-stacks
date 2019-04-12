@@ -1,0 +1,68 @@
+heat_template_version: 2015-10-15
+
+parameters:
+    public_network:
+        type: string
+        default: public
+
+    image:
+        type: string
+        default: cirros
+
+    app_port:
+        type: number
+        default: 8080
+
+resources:
+    vip_network:
+        type: private_network.yaml
+        properties:
+            name: vip
+            public_network: { get_param: public_network }
+
+    members_network:
+        type: private_network.yaml
+        properties:
+            name: members
+            public_network: { get_param: public_network }
+
+    server_group:
+        type: OS::Heat::ResourceGroup
+        properties:
+            count: 2
+            resource_def:
+                type: server.yaml
+                properties:
+                    image: { get_param: image }
+                    app_port: { get_param: app_port }
+                    network: { get_resource: members_network }
+                    subnet: { get_attr: [ members_network, resource.ipv4_subnet ] }
+                    pool: { get_resource: pool }
+
+    lb:
+        type: OS::Octavia::LoadBalancer
+        properties:
+            vip_subnet: { get_attr: [ vip_network, resource.ipv4_subnet ] }
+
+    listener:
+        type: OS::Octavia::Listener
+        properties:
+            protocol: HTTP
+            protocol_port: 80
+            loadbalancer: { get_resource: lb }
+
+    pool:
+        type: OS::Octavia::Pool
+        properties:
+            lb_algorithm: ROUND_ROBIN
+            protocol: HTTP
+            listener: { get_resource: listener }
+
+    health_monitor:
+        type: OS::Octavia::HealthMonitor
+        properties:
+            delay: 5
+            timeout: 2
+            max_retries: 1
+            type: HTTP
+            pool: { get_resource: pool }

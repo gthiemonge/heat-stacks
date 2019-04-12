@@ -1,0 +1,32 @@
+#!/bin/sh
+
+set -e
+
+stack_name=$1
+
+if [ -z "$stack_name" ]; then
+    echo "usage: $0 <stack>"
+    exit 1
+fi
+
+for s_id in $(openstack stack list -f value -c ID --tags stack); do
+    if openstack stack show -f value -c tags $s_id | grep -q '"'$stack_name'"'; then
+        echo "Deleting stack $s_id"
+        openstack stack delete --yes --wait $s_id
+    fi
+done
+
+template_dir=$(dirname $(realpath $0))/templates
+
+echo "Creating $stack_name"
+
+openstack stack create \
+    --tags stack,$stack_name \
+    -t $template_dir/$stack_name.yaml \
+    --wait \
+    --parameter image=cirros-0.4.0-x86_64-disk \
+    $stack_name
+
+openstack stack output show \
+    -f value --all \
+    $stack_name

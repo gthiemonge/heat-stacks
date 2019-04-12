@@ -1,0 +1,43 @@
+heat_template_version: 2016-10-14
+
+parameters:
+    public_network:
+        type: string
+        default: public
+
+    image:
+        type: string
+        default: cirros
+
+    app_port:
+        type: number
+        default: 8080
+
+resources:
+    vip_network:
+        type: private_network.yaml
+        properties:
+            name: vip
+            public_network: { get_param: public_network }
+
+    members_network:
+        type: private_network.yaml
+        properties:
+            name: members
+            public_network: { get_param: public_network }
+
+    server_group:
+        type: OS::Heat::ResourceGroup
+        properties:
+            count: 2
+            resource_def:
+                type: server.yaml
+                properties:
+                    image: { get_param: image }
+                    app_port: { get_param: app_port }
+                    network: { get_resource: members_network }
+
+outputs:
+    servers:
+        description:
+        value: { get_attr: [ server_group, networks ] }

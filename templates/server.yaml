@@ -1,0 +1,90 @@
+heat_template_version: 2016-10-14
+
+parameters:
+    image:
+        type: string
+    app_port:
+        type: number
+        default: 80
+    network:
+        type: string
+    pool:
+        type: string
+        default: ''
+    subnet:
+        type: string
+        default: ''
+
+conditions:
+    lb_enabled:
+        not:
+            equals:
+                - { get_param: pool }
+                - ''
+
+resources:
+    security_group:
+        type: OS::Neutron::SecurityGroup
+        properties:
+            rules:
+                - remote_ip_prefix: 0.0.0.0/0
+                  protocol: tcp
+                  port_range_min: 22
+                  port_range_max: 22
+                - remote_ip_prefix: 0.0.0.0/0
+                  protocol: tcp
+                  port_range_min: { get_param: app_port }
+                  port_range_max: { get_param: app_port }
+                - remote_ip_prefix: ::/0
+                  ethertype: IPv6
+                  protocol: tcp
+                  port_range_min: { get_param: app_port }
+                  port_range_max: { get_param: app_port }
+                - direction: ingress
+                  ethertype: IPv4
+                  protocol: icmp
+                - direction: ingress
+                  ethertype: IPv6
+                  protocol: ipv6-icmp
+
+    flavor_tiny:
+        type: OS::Nova::Flavor
+        properties:
+            disk: 1
+            ram: 512
+            vcpus: 1
+
+    server:
+        type: OS::Nova::Server
+        properties:
+            image: { get_param: image }
+            flavor: { get_resource: flavor_tiny }
+            networks:
+                - network: { get_param: network }
+            security_groups:
+                - { get_resource: security_group }
+            user_data_format: RAW
+            user_data:
+                str_replace:
+                    template: |
+                        #!/bin/sh
+
+                        MYIP=$(ifconfig eth0|grep 'inet addr'|awk -F: '{print $2}'| awk '{print $1}')
+                        while true; do echo -e "HTTP/1.0 200 OK\r\n\r\nWelcome to $MYIP" | sudo nc -l -p PORT ; done
+
+                    params:
+                        PORT: { get_param: app_port }
+
+    member:
+        type: OS::Octavia::PoolMember
+        properties:
+            pool: { get_param: pool }
+            address: { get_attr: [ server, first_address ] }
+            subnet: { get_param: subnet }
+            protocol_port: { get_param: app_port }
+        condition: lb_enabled
+
+outputs:
+    networks:
+        description:
+        value: { get_attr: [ server, networks ] }
