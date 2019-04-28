@@ -49,6 +49,7 @@ resources:
         properties:
             protocol: HTTP
             protocol_port: 80
+            connection_limit: 100000
             loadbalancer: { get_resource: lb }
 
     pool:
