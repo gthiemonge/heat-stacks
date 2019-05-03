@@ -5,8 +5,9 @@ parameters:
         type: string
         default: cirros
 
-    key_pair_path:
+    key_pair:
         type: string
+        default: keypair0
 
 resources:
     server:
@@ -16,7 +17,7 @@ resources:
             network: private
             ram: 64
             app_port: 8080
-            key_pair_path: { get_param: key_pair_path }
+            key_pair: { get_param: key_pair }
 
 outputs:
     servers:

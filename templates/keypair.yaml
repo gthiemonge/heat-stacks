@@ -1,0 +1,12 @@
+heat_template_version: 2016-10-14
+
+parameters:
+    key_pair_path:
+        type: string
+
+resources:
+    key_pair:
+        type: OS::Nova::KeyPair
+        properties:
+            name: keypair0
+            public_key: { get_file: { get_param: key_pair_path } }

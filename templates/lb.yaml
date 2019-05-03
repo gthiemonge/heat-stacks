@@ -13,8 +13,9 @@ parameters:
         type: number
         default: 8080
 
-    key_pair_path:
+    key_pair:
         type: string
+        default: keypair0
 
 resources:
     vip_network:
@@ -41,7 +42,7 @@ resources:
                     network: { get_resource: members_network }
                     subnet: { get_attr: [ members_network, resource.ipv4_subnet ] }
                     pool: { get_resource: pool }
-                    key_pair_path: { get_param: key_pair_path }
+                    key_pair: { get_param: key_pair }
 
     lb:
         type: OS::Octavia::LoadBalancer

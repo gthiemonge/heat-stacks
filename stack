@@ -65,7 +65,8 @@ if up:
             config['heat_template_version'] = d
 
     has_image = config.get('parameters', {}).get('image', None) is not None
-    has_key_pair = config.get('parameters', {}).get('key_pair_path', None) is not None
+    has_key_pair_path = config.get('parameters', {}).get('key_pair_path', None) is not None
+    has_key_pair = config.get('parameters', {}).get('key_pair', None) is not None
 
     files, template = template_utils.process_template_path(stack_file)
 
@@ -78,13 +79,16 @@ if up:
     if has_image:
         args['parameters']['image'] = 'cirros-0.4.0-x86_64-disk'
 
-    if has_key_pair:
+    if has_key_pair_path:
         key_filename =  os.path.join(
             os.path.dirname(os.path.realpath(sys.argv[0])),
             'keys/id_rsa.pub')
         args['parameters']['key_pair_path'] = 'keys/id_rsa.pub'
         with open(key_filename) as fp:
             files['keys/id_rsa.pub'] = fp.read()
+
+    if has_key_pair:
+        args['parameters']['key_pair'] = 'keypair0'
 
     cur_stack = conn.orchestration.find_stack(stack_name)
     if cur_stack is None:
