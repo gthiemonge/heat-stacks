@@ -1,0 +1,24 @@
+heat_template_version: 2016-10-14
+
+parameters:
+    image:
+        type: string
+        default: cirros
+
+    key_pair_path:
+        type: string
+
+resources:
+    server:
+        type: server.yaml
+        properties:
+            image: { get_param: image }
+            network: private
+            ram: 64
+            app_port: 8080
+            key_pair_path: { get_param: key_pair_path }
+
+outputs:
+    servers:
+        description:
+        value: { get_attr: [ server, networks ] }

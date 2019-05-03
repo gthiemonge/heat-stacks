@@ -8,6 +8,7 @@ import yaml
 import openstack
 from heatclient.common import template_utils
 
+
 def config_from_env():
     config = {}
     for k in ('auth_url', 'project_name', 'username',
@@ -16,63 +17,92 @@ def config_from_env():
         config[k] = v
     return config
 
+
+action = sys.argv[1]
+
 try:
-    stack_name = sys.argv[1]
+    stack_name = sys.argv[2]
 except IndexError:
     stack_name = "main"
+
+down = False
+up = False
+update = False
+if action == "restart":
+    down = True
+    up = True
+elif action == "up":
+    up = True
+elif action == "down":
+    down = True
 
 openstack.enable_logging()
 
 conn = openstack.connect(**config_from_env())
 
-cur_stack = conn.orchestration.find_stack(stack_name)
-if cur_stack:
-    print("Deleting stack %s" % (stack_name))
-    conn.orchestration.delete_stack(stack_name)
+if down:
+    cur_stack = conn.orchestration.find_stack(stack_name)
+    if cur_stack:
+        print("Deleting stack %s" % (stack_name))
+        conn.orchestration.delete_stack(stack_name)
 
-    while conn.orchestration.find_stack(stack_name) is not None:
+        while conn.orchestration.find_stack(stack_name) is not None:
+            time.sleep(1)
+
+        print("Stack %s deleted" % (stack_name))
+
+if up:
+    template_dir = os.path.join(
+        os.path.dirname(os.path.realpath(sys.argv[0])),
+        "templates")
+    stack_file = os.path.join(template_dir, "%s.yaml" % (stack_name))
+
+    with open(stack_file) as fp:
+        config = yaml.safe_load(fp)
+
+        if 'heat_template_version' in config:
+            d = config['heat_template_version'].strftime('%Y-%m-%d')
+            config['heat_template_version'] = d
+
+    has_image = config.get('parameters', {}).get('image', None) is not None
+    has_key_pair = config.get('parameters', {}).get('key_pair_path', None) is not None
+
+    files, template = template_utils.process_template_path(stack_file)
+
+    args = {
+        'files': files,
+        'template': template,
+        'parameters': {},
+        'name': stack_name,
+    }
+    if has_image:
+        args['parameters']['image'] = 'cirros-0.4.0-x86_64-disk'
+
+    if has_key_pair:
+        key_filename =  os.path.join(
+            os.path.dirname(os.path.realpath(sys.argv[0])),
+            'keys/id_rsa.pub')
+        args['parameters']['key_pair_path'] = 'keys/id_rsa.pub'
+        with open(key_filename) as fp:
+            files['keys/id_rsa.pub'] = fp.read()
+
+    cur_stack = conn.orchestration.find_stack(stack_name)
+    if cur_stack is None:
+        print("Creating stack %s" % (stack_name))
+        conn.orchestration.create_stack(**args)
+    else:
+        print("Updating stack %s" % (stack_name))
+        conn.orchestration.update_stack(cur_stack.id, **args)
+
+    while True:
+        stack = conn.orchestration.get_stack(stack_name)
+        if stack.status not in ('CREATE_IN_PROGRESS', 'UPDATE_IN_PROGRESS'):
+            break
+
         time.sleep(1)
 
-    print("Stack %s deleted" % (stack_name))
+    print("Stack %s %s (%s)" % (stack_name, stack.status, stack.status_reason))
 
-template_dir = os.path.join(
-    os.path.dirname(os.path.realpath(sys.argv[0])),
-    "templates")
-stack_file = os.path.join(template_dir, "%s.yaml" % (stack_name))
-
-with open(stack_file) as fp:
-    config = yaml.safe_load(fp)
-
-    if 'heat_template_version' in config:
-        d = config['heat_template_version'].strftime('%Y-%m-%d')
-        config['heat_template_version'] = d
-
-has_image = config.get('parameters', {}).get('image', None) is not None
-
-files, template = template_utils.process_template_path(stack_file)
-
-args = {
-    'files': files,
-    'template': template,
-    'parameters': {},
-    'name': stack_name,
-}
-if has_image:
-    args['parameters']['image'] = 'cirros-0.4.0-x86_64-disk'
-
-print("Creating stack %s" % (stack_name))
-
-conn.orchestration.create_stack(**args)
-
-while True:
-    stack = conn.orchestration.get_stack(stack_name)
-    if stack.status != 'CREATE_IN_PROGRESS':
-        break
-
-    time.sleep(1)
-
-print("Stack %s %s (%s)" % (stack_name, stack.status, stack.status_reason))
-
-print(yaml.safe_dump(stack.outputs,
-                     default_flow_style=False,
-                     explicit_start=True))
+    print(yaml.safe_dump(stack.outputs,
+                         default_flow_style=False,
+                         explicit_start=True))

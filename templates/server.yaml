@@ -14,6 +14,12 @@ parameters:
     subnet:
         type: string
         default: ''
+    ram:
+        type: number
+        default: 512
+
+    key_pair_path:
+        type: string
 
 conditions:
     lb_enabled:
@@ -40,6 +46,15 @@ resources:
                   protocol: tcp
                   port_range_min: { get_param: app_port }
                   port_range_max: { get_param: app_port }
+                - remote_ip_prefix: 0.0.0.0/0
+                  protocol: udp
+                  port_range_min: { get_param: app_port }
+                  port_range_max: { get_param: app_port }
+                - remote_ip_prefix: ::/0
+                  ethertype: IPv6
+                  protocol: udp
+                  port_range_min: { get_param: app_port }
+                  port_range_max: { get_param: app_port }
                 - direction: ingress
                   ethertype: IPv4
                   protocol: icmp
@@ -51,14 +66,21 @@ resources:
         type: OS::Nova::Flavor
         properties:
             disk: 1
-            ram: 512
+            ram: { get_param: ram }
             vcpus: 1
+
+    key_pair:
+        type: OS::Nova::KeyPair
+        properties:
+            name: key_pair0
+            public_key: { get_file: { get_param: key_pair_path } }
 
     server:
         type: OS::Nova::Server
         properties:
             image: { get_param: image }
             flavor: { get_resource: flavor_tiny }
+            key_name: { get_resource: key_pair }
             networks:
                 - network: { get_param: network }
             security_groups:

@@ -13,9 +13,6 @@ parameters:
         type: number
         default: 8080
 
-    key_pair_path:
-        type: string
-
 resources:
     vip_network:
         type: private_network.yaml
@@ -41,7 +38,6 @@ resources:
                     network: { get_resource: members_network }
                     subnet: { get_attr: [ members_network, resource.ipv4_subnet ] }
                     pool: { get_resource: pool }
-                    key_pair_path: { get_param: key_pair_path }
 
     lb:
         type: OS::Octavia::LoadBalancer
@@ -51,8 +47,9 @@ resources:
     listener:
         type: OS::Octavia::Listener
         properties:
-            protocol: HTTP
-            protocol_port: 80
+            protocol: TERMINATED_HTTPS
+            protocol_port: 443
+            default_tls_container_ref: "http://192.168.122.143/key-manager/v1/secrets/7b986f0c-d216-4033-95b1-e52cd296ec22"
             connection_limit: 100000
             loadbalancer: { get_resource: lb }
 

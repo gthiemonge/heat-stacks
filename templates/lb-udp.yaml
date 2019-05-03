@@ -1,4 +1,4 @@
-heat_template_version: 2016-10-14
+heat_template_version: 2015-10-15
 
 parameters:
     public_network:
@@ -39,9 +39,44 @@ resources:
                     image: { get_param: image }
                     app_port: { get_param: app_port }
                     network: { get_resource: members_network }
+                    subnet: { get_attr: [ members_network, resource.ipv4_subnet ] }
+                    pool: { get_resource: pool }
                     key_pair_path: { get_param: key_pair_path }
 
+    lb:
+        type: OS::Octavia::LoadBalancer
+        properties:
+            vip_subnet: { get_attr: [ vip_network, resource.ipv4_subnet ] }
+
+    listener:
+        type: OS::Octavia::Listener
+        properties:
+            protocol: UDP
+            protocol_port: 80
+            connection_limit: 100000
+            loadbalancer: { get_resource: lb }
+
+    pool:
+        type: OS::Octavia::Pool
+        properties:
+            lb_algorithm: ROUND_ROBIN
+            protocol: UDP
+            listener: { get_resource: listener }
+
+    health_monitor:
+        type: OS::Octavia::HealthMonitor
+        properties:
+            delay: 5
+            timeout: 2
+            max_retries: 1
+            type: UDP-CONNECT
+            pool: { get_resource: pool }
+
 outputs:
+    loadbalancer_vip:
+        value: { get_attr: [ lb, vip_address ] }
+    listener:
+        value: { get_attr: [ listener, show ] }
     servers:
         description:
         value: { get_attr: [ server_group, networks ] }
