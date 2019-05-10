@@ -1,3 +1,4 @@
+# Depends-On: keypair
 heat_template_version: 2016-10-14
 
 parameters:

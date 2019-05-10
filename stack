@@ -35,12 +35,15 @@ elif action == "up":
     up = True
 elif action == "down":
     down = True
+else:
+    print("Unknown action `%s'" % (action))
+    sys.exit(1)
 
 openstack.enable_logging()
 
 conn = openstack.connect(**config_from_env())
 
-if down:
+def stack_down(stack_name):
     cur_stack = conn.orchestration.find_stack(stack_name)
     if cur_stack:
         print("Deleting stack %s" % (stack_name))
@@ -51,11 +54,23 @@ if down:
 
         print("Stack %s deleted" % (stack_name))
 
-if up:
+def stack_up(stack_name):
     template_dir = os.path.join(
         os.path.dirname(os.path.realpath(sys.argv[0])),
         "templates")
     stack_file = os.path.join(template_dir, "%s.yaml" % (stack_name))
+
+    dependencies = []
+
+    with open(stack_file) as fp:
+        for l in fp:
+            l = l.strip()
+            if len(l) > 2 and l[0] == '#':
+                if l[2:].startswith('Depends-On: '):
+                    dependencies.append(l[14:])
+
+    for dep in dependencies:
+        stack_up(dep)
 
     with open(stack_file) as fp:
         config = yaml.safe_load(fp)
@@ -110,3 +125,8 @@ if up:
     print(yaml.safe_dump(stack.outputs,
                          default_flow_style=False,
                          explicit_start=True))
+
+if down:
+    stack_down(stack_name)
+if up:
+    stack_up(stack_name)
