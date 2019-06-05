@@ -28,6 +28,7 @@ except IndexError:
 down = False
 up = False
 update = False
+list_stacks = False
 if action == "restart":
     down = True
     up = True
@@ -35,6 +36,8 @@ elif action == "up":
     up = True
 elif action == "down":
     down = True
+elif action == "list":
+    list_stacks = True
 else:
     print("Unknown action `%s'" % (action))
     sys.exit(1)
@@ -90,6 +93,7 @@ def stack_up(stack_name):
         'template': template,
         'parameters': {},
         'name': stack_name,
+        'tags': 'stack',
     }
     if has_image:
         args['parameters']['image'] = 'cirros-0.4.0-x86_64-disk'
@@ -126,6 +130,13 @@ def stack_up(stack_name):
                          default_flow_style=False,
                          explicit_start=True))
 
+def stack_list():
+    for stack in conn.orchestration.stacks():
+        if 'stack' in stack.tags:
+            print(stack.name)
+
+if list_stacks:
+    stack_list()
 if down:
     stack_down(stack_name)
 if up:
