@@ -1,0 +1,36 @@
+# Depends-On: keypair
+heat_template_version: 2015-10-15
+
+parameters:
+    public_network:
+        type: string
+        default: public
+
+    image:
+        type: string
+        default: cirros
+
+    app_port:
+        type: number
+        default: 8080
+
+    key_pair:
+        type: string
+        default: keypair0
+
+resources:
+    vip_network:
+        type: ../templates/private_network.yaml
+        properties:
+            name: vip
+            ipv4_enable: true
+            ipv6_enable: true
+            public_network: { get_param: public_network }
+
+    vip2_network:
+        type: ../templates/private_network.yaml
+        properties:
+            name: vip2
+            ipv4_enable: true
+            ipv6_enable: true
+            public_network: { get_param: public_network }

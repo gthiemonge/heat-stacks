@@ -58,10 +58,10 @@ def stack_down(stack_name):
         print("Stack %s deleted" % (stack_name))
 
 def stack_up(stack_name):
-    template_dir = os.path.join(
+    stack_dir = os.path.join(
         os.path.dirname(os.path.realpath(sys.argv[0])),
-        "templates")
-    stack_file = os.path.join(template_dir, "%s.yaml" % (stack_name))
+        "stacks")
+    stack_file = os.path.join(stack_dir, "%s.yaml" % (stack_name))
 
     dependencies = []
 

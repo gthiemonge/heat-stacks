@@ -1,0 +1,17 @@
+heat_template_version: 2015-10-15
+
+resources:
+    public:
+        type: ../templates/public_network.yaml
+        properties:
+            name: public
+            ipv4_enable: true
+            ipv6_enable: true
+
+    private:
+        type: ../templates/private_network.yaml
+        properties:
+            name: private
+            ipv4_enable: true
+            ipv6_enable: true
+            public_network: { get_resource: public }

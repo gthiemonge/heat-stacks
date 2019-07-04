@@ -4,13 +4,10 @@ parameters:
     name:
         type: string
 
-    public_network:
-        type: string
-        default: public
-
     ipv4_enable:
         type: boolean
         default: true
+
     ipv6_enable:
         type: boolean
         default: false
@@ -20,10 +17,18 @@ conditions:
     ipv6_enabled: { get_param: ipv6_enable }
 
 resources:
+        #network:
+        #    type: OS::Neutron::Net
+        #    properties:
+        #        name: { get_param: name }
+
     network:
-        type: OS::Neutron::Net
+        type: OS::Neutron::ProviderNet
         properties:
             name: { get_param: name }
+            router_external: true
+            physical_network: datacentre
+            network_type: flat
 
     ipv4_subnet:
         type: OS::Neutron::Subnet
@@ -42,27 +47,6 @@ resources:
             network: { get_resource: network }
             ipv6_address_mode: slaac
             ipv6_ra_mode: slaac
-        condition: ipv6_enabled
-
-    router:
-        type: OS::Neutron::Router
-        properties:
-            name: { list_join: ['-', [ { get_param: name }, 'router' ] ] }
-            external_gateway_info:
-                network: { get_param: public_network }
-
-    router_ipv4_interface:
-        type: OS::Neutron::RouterInterface
-        properties:
-            router: { get_resource: router }
-            subnet: { get_resource: ipv4_subnet }
-        condition: ipv4_enabled
-
-    router_ipv6_interface:
-        type: OS::Neutron::RouterInterface
-        properties:
-            router: { get_resource: router }
-            subnet: { get_resource: ipv6_subnet }
         condition: ipv6_enabled
 
 outputs:

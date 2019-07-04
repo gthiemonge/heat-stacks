@@ -12,7 +12,7 @@ parameters:
 
 resources:
     server:
-        type: server.yaml
+        type: ../templates/server.yaml
         properties:
             image: { get_param: image }
             network: private

@@ -20,13 +20,13 @@ parameters:
 
 resources:
     vip_network:
-        type: private_network.yaml
+        type: ../templates/private_network.yaml
         properties:
             name: vip
             public_network: { get_param: public_network }
 
     members_network:
-        type: private_network.yaml
+        type: ../templates/private_network.yaml
         properties:
             name: members
             public_network: { get_param: public_network }
@@ -36,7 +36,7 @@ resources:
         properties:
             count: 2
             resource_def:
-                type: server.yaml
+                type: ../templates/server.yaml
                 properties:
                     image: { get_param: image }
                     app_port: { get_param: app_port }
@@ -53,7 +53,7 @@ resources:
     listener:
         type: OS::Octavia::Listener
         properties:
-            protocol: HTTP
+            protocol: UDP
             protocol_port: 80
             connection_limit: 100000
             loadbalancer: { get_resource: lb }
@@ -62,7 +62,7 @@ resources:
         type: OS::Octavia::Pool
         properties:
             lb_algorithm: ROUND_ROBIN
-            protocol: HTTP
+            protocol: UDP
             listener: { get_resource: listener }
 
     health_monitor:
@@ -71,7 +71,7 @@ resources:
             delay: 5
             timeout: 2
             max_retries: 1
-            type: HTTP
+            type: UDP-CONNECT
             pool: { get_resource: pool }
 
 outputs:
