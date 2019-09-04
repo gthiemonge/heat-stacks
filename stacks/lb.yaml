@@ -67,14 +67,14 @@ resources:
             protocol: HTTP
             listener: { get_resource: listener }
 
-   #health_monitor:
-   #    type: OS::Octavia::HealthMonitor
-   #    properties:
-   #        delay: 5
-   #        timeout: 2
-   #        max_retries: 1
-   #        type: HTTP
-   #        pool: { get_resource: pool }
+    health_monitor:
+        type: OS::Octavia::HealthMonitor
+        properties:
+            delay: 5
+            timeout: 2
+            max_retries: 1
+            type: TCP
+            pool: { get_resource: pool }
 
 outputs:
     loadbalancer_vip:
