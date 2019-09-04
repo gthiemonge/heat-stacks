@@ -86,8 +86,11 @@ resources:
                     template: |
                         #!/bin/sh
 
-                        MYIP=$(ifconfig eth0|grep 'inet addr'|awk -F: '{print $2}'| awk '{print $1}')
-                        while true; do echo -e "HTTP/1.0 200 OK\r\n\r\nWelcome to $MYIP" | sudo nc -l -p PORT ; done
+                        ip_address=$(ip addr show eth0 | grep 'inet ' | awk '{print $2}' | cut -d/ -f1)
+
+                        curl -k "https://review.opendev.org/gitweb?p=openstack/octavia-tempest-plugin.git;a=blob;f=octavia_tempest_plugin/contrib/test_server/test_server.bin;h=e3cc7ba0c8ad5bc4017a9cd0b5df6b10330a72f5;hb=d6fb54d330c5f38470ef3f9998bbcd714a311f69" > /tmp/test_server
+                        chmod +x /tmp/test_server
+                        /tmp/test_server -port PORT -id $ip_address
 
                     params:
                         PORT: { get_param: app_port }
