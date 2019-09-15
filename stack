@@ -99,9 +99,7 @@ def stack_up(stack_name):
         args['parameters']['image'] = 'cirros-0.4.0-x86_64-disk'
 
     if has_key_pair_path:
-        key_filename =  os.path.join(
-            os.path.dirname(os.path.realpath(sys.argv[0])),
-            'keys/id_rsa.pub')
+        key_filename = os.path.expanduser('~/.ssh/id_rsa.pub')
         args['parameters']['key_pair_path'] = 'keys/id_rsa.pub'
         with open(key_filename) as fp:
             files['keys/id_rsa.pub'] = fp.read()
