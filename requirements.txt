@@ -1,0 +1,3 @@
+openstacksdk
+python-heatclient
+PyYAML

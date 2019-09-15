@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 import sys
@@ -7,7 +7,6 @@ import time
 import yaml
 import openstack
 from heatclient.common import template_utils
-
 
 def config_from_env():
     config = {}
@@ -18,35 +17,7 @@ def config_from_env():
     return config
 
 
-action = sys.argv[1]
-
-try:
-    stack_name = sys.argv[2]
-except IndexError:
-    stack_name = "main"
-
-down = False
-up = False
-update = False
-list_stacks = False
-if action == "restart":
-    down = True
-    up = True
-elif action == "up":
-    up = True
-elif action == "down":
-    down = True
-elif action == "list":
-    list_stacks = True
-else:
-    print("Unknown action `%s'" % (action))
-    sys.exit(1)
-
-openstack.enable_logging()
-
-conn = openstack.connect(**config_from_env())
-
-def stack_down(stack_name):
+def stack_down(conn, stack_name):
     cur_stack = conn.orchestration.find_stack(stack_name)
     if cur_stack:
         print("Deleting stack %s" % (stack_name))
@@ -57,11 +28,22 @@ def stack_down(stack_name):
 
         print("Stack %s deleted" % (stack_name))
 
-def stack_up(stack_name):
-    stack_dir = os.path.join(
+def _stack_dir():
+    yield os.path.join(
         os.path.dirname(os.path.realpath(sys.argv[0])),
         "stacks")
-    stack_file = os.path.join(stack_dir, "%s.yaml" % (stack_name))
+    yield os.path.join(
+        os.path.dirname(sys.modules[__name__].__file__),
+        "..", "stacks")
+    yield os.path.join(sys.prefix, "share/heat-stacks/stacks")
+
+def stack_up(conn, stack_name):
+    for stack_dir in _stack_dir():
+        stack_file = os.path.join(stack_dir, "%s.yaml" % (stack_name))
+        if os.path.exists(stack_file):
+            break
+    else:
+        raise Exception("Cannot find '%s' stack." % (stack_name))
 
     dependencies = []
 
@@ -73,7 +55,7 @@ def stack_up(stack_name):
                     dependencies.append(l[14:])
 
     for dep in dependencies:
-        stack_up(dep)
+        stack_up(conn, dep)
 
     with open(stack_file) as fp:
         config = yaml.safe_load(fp)
@@ -128,14 +110,50 @@ def stack_up(stack_name):
                          default_flow_style=False,
                          explicit_start=True))
 
-def stack_list():
+def stack_list(conn):
     for stack in conn.orchestration.stacks():
         if 'stack' in stack.tags:
             print(stack.name)
 
-if list_stacks:
-    stack_list()
-if down:
-    stack_down(stack_name)
-if up:
-    stack_up(stack_name)
+def main():
+    try:
+        action = sys.argv[1]
+    except IndexError:
+        print("usage: %s [list|up|down] <stack>" % (sys.argv[0]))
+        sys.exit(1)
+
+    try:
+        stack_name = sys.argv[2]
+    except IndexError:
+        stack_name = "main"
+
+    down = False
+    up = False
+    update = False
+    list_stacks = False
+    if action == "restart":
+        down = True
+        up = True
+    elif action == "up":
+        up = True
+    elif action == "down":
+        down = True
+    elif action == "list":
+        list_stacks = True
+    else:
+        print("Unknown action `%s'" % (action))
+        sys.exit(1)
+
+    openstack.enable_logging()
+
+    conn = openstack.connect(**config_from_env())
+
+    if list_stacks:
+        stack_list(conn)
+    if down:
+        stack_down(conn, stack_name)
+    if up:
+        stack_up(conn, stack_name)
+
+if __name__ == "__main__":
+    main()
