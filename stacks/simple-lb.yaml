@@ -1,0 +1,33 @@
+# Depends-On: keypair
+heat_template_version: 2015-10-15
+
+parameters:
+    public_network:
+        type: string
+        default: public
+
+resources:
+    vip_network:
+        type: ../templates/private_network.yaml
+        properties:
+            name: vip
+            public_network: { get_param: public_network }
+
+    lb:
+        type: OS::Octavia::LoadBalancer
+        properties:
+            vip_subnet: { get_attr: [ vip_network, resource.ipv4_subnet ] }
+
+    listener:
+        type: OS::Octavia::Listener
+        properties:
+            protocol: HTTP
+            protocol_port: 80
+            connection_limit: 100000
+            loadbalancer: { get_resource: lb }
+
+outputs:
+    loadbalancer_vip:
+        value: { get_attr: [ lb, vip_address ] }
+    listener:
+        value: { get_attr: [ listener, show ] }

@@ -1,0 +1,22 @@
+# Depends-On: keypair
+heat_template_version: 2016-10-14
+
+parameters:
+    key_pair:
+        type: string
+        default: keypair0
+
+resources:
+    server:
+        type: ../templates/server.yaml
+        properties:
+            image: amphora-x64-haproxy
+            network: private
+            ram: 1024
+            app_port: 8080
+            key_pair: { get_param: key_pair }
+
+outputs:
+    servers:
+        description:
+        value: { get_attr: [ server, networks ] }
